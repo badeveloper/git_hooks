@@ -1,1 +1,1 @@
-from    git_hooks import GitProject
+from    .git_hooks import   GitProject

@@ -3,35 +3,36 @@ import re
 import  os.path
 from  os import  remove
 from shutil import  rmtree
+from time import sleep
 
 class GitProject():
     def __init__(self, project_git_url=None):
-        self._project_git_url = project_git_url
-        self.default_clone_to = './'
-        self._project_name = None
-        self.repo_obj = None
-        self.to_path = self.default_clone_to + self.name_from_url()
-        self.repo_obj = self.init_repo_obj()
-        if not  self.repo_obj:
-            print ('NOT INIT REPO OBJ!!!')
+        if project_git_url:
+            self._project_git_url = project_git_url
+            self.default_clone_to = './'
+            self._project_name = None
+            self.repo_obj = None
+            self.to_path = self.default_clone_to + self.name_from_url()
+            if not  self.repo_obj:
+                   self.init_repo_obj()
 
     def init_repo_obj(self):
         if os.path.exists(self.to_path) and os.path.isdir(self.to_path):
             repo_obj = Repo(self.to_path)
             if isinstance(repo_obj, Repo):
-                return repo_obj
+                self.repo_obj = repo_obj
         else:
-            repo_obj = self.clone(to_path=self.to_path)
-            return  repo_obj
+            self.clone(to_path=self.to_path)
 
     def show_url(self):
         print(self._project_git_url)
 
     def name_from_url(self):
-        project_name = re.search('(?<=\/)(\w+)(?=\.git)', self._project_git_url)
-        if project_name:
-            self._project_name = project_name.group()
-        return self._project_name
+            spl_by_slash = re.split('\/+', self._project_git_url)
+            if len(spl_by_slash) > 0:
+                spl_by_dot = re.split('\.', spl_by_slash[-1])
+                if len(spl_by_dot) == 2:
+                    return spl_by_dot[0]
 
     def clone(self, flush_repo=False, to_path=None):
         if to_path:
@@ -40,15 +41,28 @@ class GitProject():
             rmtree(self.to_path)
         self.repo_obj = Repo.clone_from(url=self._project_git_url, to_path=self.to_path)
 
+
     def add_remote(self, remote_addr=None, remote_name = None):
         if remote_addr and remote_name:
-            if not self.repo_obj:
-                self.repo_obj = Repo(self.to_path)
             if self.repo_obj:
-                self.repo_obj.create_remote(remote_name, remote_addr)
+                  remotes_names = [remote[0] for remote in self.get_remotes()]
+                  if remote_name in remotes_names:
+                      self.repo_obj.delete_remote(self.repo_obj.remote(name=remote_name))
+                      self.repo_obj.create_remote(name=remote_name, url=remote_addr)
+                  else: self.repo_obj.create_remote(name=remote_name, url=remote_addr)
 
+    def get_remotes(self):
+        remotes_list = []
+        remotes = self.repo_obj.remotes
+        for remote in remotes:
+            remotes_list.append([remote.name, remote.url])
+        return remotes_list
 
-
+    def pull(self, remote_name=None):
+        if remote_name:
+            _remote = self.repo_obj.remote(name=remote_name)
+            print(type(_remote))
+            _remote.pull
 
 
 
