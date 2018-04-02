@@ -11,9 +11,9 @@ class GitProject():
         self._project_name = None
         self.repo_obj = None
         self.to_path = self.default_clone_to + self.name_from_url()
-        self.repo_obj = self.repo_obj()
+        self.repo_obj = self.init_repo_obj()
         if not  self.repo_obj:
-            print 'NOT INIT REPO OBJ!!!'
+            print ('NOT INIT REPO OBJ!!!')
 
     def init_repo_obj(self):
         if os.path.exists(self.to_path) and os.path.isdir(self.to_path):
@@ -52,9 +52,8 @@ class GitProject():
 
 
 
-project_url='https://github.com/badeveloper/testproject.git'
 
-demo_proj = GitProject(project_git_url=project_url)
+
 
 #demo_proj.clone(flush_repo=True)
 #demo_proj.add_remote('https://msk-dpro-gka003.x5.ru:8443/invoice_discounting/msa-service-ucd.git', 'sinimex')
