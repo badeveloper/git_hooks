@@ -1,74 +1,88 @@
-from git import Repo
+from git import Repo, Head, Remote, cmd
 import re
 import  os.path
 from  os import  remove
 from shutil import  rmtree
 from time import sleep
+import  subprocess
 
 class GitProject():
     def __init__(self, project_git_url=None):
         if project_git_url:
             self._project_git_url = project_git_url
-            self.default_clone_to = './'
+            self.default_clone_to = 'C:/Users/ig.yurev/temp/'
             self._project_name = None
-            self.repo_obj = None
             self.to_path = self.default_clone_to + self.name_from_url()
-            if not  self.repo_obj:
-                   self.init_repo_obj()
+            self.work_dir = os.path.abspath(self.to_path)
 
-    def init_repo_obj(self):
-        if os.path.exists(self.to_path) and os.path.isdir(self.to_path):
-            repo_obj = Repo(self.to_path)
-            if isinstance(repo_obj, Repo):
-                self.repo_obj = repo_obj
-        else:
-            self.clone(to_path=self.to_path)
-
-    def show_url(self):
-        print(self._project_git_url)
-
-    def name_from_url(self):
-            spl_by_slash = re.split('\/+', self._project_git_url)
-            if len(spl_by_slash) > 0:
-                spl_by_dot = re.split('\.', spl_by_slash[-1])
-                if len(spl_by_dot) == 2:
-                    return spl_by_dot[0]
-
-    def clone(self, flush_repo=False, to_path=None):
-        if to_path:
-            self.to_path = to_path
-        if os.path.exists(self.to_path) and os.path.isdir(self.to_path) and flush_repo:
-            rmtree(self.to_path)
-        self.repo_obj = Repo.clone_from(url=self._project_git_url, to_path=self.to_path)
-
-
-    def add_remote(self, remote_addr=None, remote_name = None):
-        if remote_addr and remote_name:
-            if self.repo_obj:
-                  remotes_names = [remote[0] for remote in self.get_remotes()]
-                  if remote_name in remotes_names:
-                      self.repo_obj.delete_remote(self.repo_obj.remote(name=remote_name))
-                      self.repo_obj.create_remote(name=remote_name, url=remote_addr)
-                  else: self.repo_obj.create_remote(name=remote_name, url=remote_addr)
+    def clone_bare(self, refresh=False):
+        if  refresh and os.path.isdir(self.to_path):
+           rmtree(self.to_path)
+        if not  os.path.exists(self.work_dir):
+            cmd_args = ['git', 'clone', '--bare', self._project_git_url, self.to_path]
+            bare_clone = subprocess.check_output(cmd_args, shell=True)
+            for line in bare_clone.decode().split('\n'):
+                print(line)
+        else: print('Repo already cloned!')
 
     def get_remotes(self):
-        remotes_list = []
-        remotes = self.repo_obj.remotes
-        for remote in remotes:
-            remotes_list.append([remote.name, remote.url])
-        return remotes_list
+        _remotes = {}
+        cmd_args = ['cd',  self.work_dir, '&&', 'git', 'remote',  '-v']
+        remotes = subprocess.check_output(cmd_args, shell=True)
+        for line in remotes.decode().split('\n'):
+            spl_line = re.split('\s+', line)
+            if len(spl_line) > 1:
+                remote_name = spl_line[0]
+                remote_url = spl_line[1]
+                one_remote = {remote_name : remote_url}
+                _remotes.update(one_remote)
+        return  _remotes
 
-    def pull(self, remote_name=None):
-        if remote_name:
-            _remote = self.repo_obj.remote(name=remote_name)
-            print(type(_remote))
-            _remote.pull
+    def add_remote(self, name=None, url=None):
+         if name and url:
+             exists = self.get_remotes()
+             if exists.get(name):
+                 cmd_args = ['cd',  self.work_dir, '&&', 'git', 'remote', 'set-url', name,  url]
+                 change = subprocess.check_output(cmd_args, shell=True)
+                 for line in change.decode().split('\n'):
+                    print(line)
+             else:
+                 cmd_args = ['cd', self.work_dir, '&&', 'git', 'remote', 'add', name, url]
+                 add = subprocess.check_output(cmd_args, shell=True)
+                 for line in add.decode().split('\n'):
+                     print(line)
 
+    def name_from_url(self):
+        spl_by_slash = re.split('\/+', self._project_git_url)
+        if len(spl_by_slash) > 0:
+            spl_by_dot = re.split('\.', spl_by_slash[-1])
+            if len(spl_by_dot) == 2:
+                return spl_by_dot[0]
 
+    def pull(self, remote_name=None, branch_name=None):
+        if remote_name and branch_name:
+            work_dir = os.path.abspath(self.to_path)
+            pull = subprocess.check_output(['cd',  work_dir, '&&', 'git', 'pull', remote_name,  branch_name], shell=True)
+            for line in pull.decode().split('\n'):
+                print(line)
 
+    def pull(self, fetch_from=None):
+        if fetch_from:
+            work_dir = os.path.abspath(self.to_path)
+            pull = subprocess.check_output(['cd', work_dir, '&&', 'git', 'fetch', fetch_from], shell=True)
+            for line in pull.decode().split('\n'):
+                print(line)
 
-
-
+    def get_all_branches(self):
+        print(self.work_dir)
+        all_branches = []
+        check = subprocess.check_output(['cd',  self.work_dir, '&&', 'git', 'branch', '-r'], shell=True)
+        for line in check.decode().split('\n'):
+            if len((re.split('->', line))) == 1:
+                clean_value = re.sub('\s+', '', line)
+                if clean_value:
+                    all_branches.append(clean_value)
+        return all_branches
 #demo_proj.clone(flush_repo=True)
 #demo_proj.add_remote('https://msk-dpro-gka003.x5.ru:8443/invoice_discounting/msa-service-ucd.git', 'sinimex')
 
