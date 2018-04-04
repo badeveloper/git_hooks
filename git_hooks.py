@@ -15,11 +15,13 @@ class GitProject():
             self.to_path = self.default_clone_to + self.name_from_url()
             self.work_dir = os.path.abspath(self.to_path)
 
-    def clone_bare(self, refresh=False):
+    def clone(self, refresh=False, mirror=False):
         if  refresh and os.path.isdir(self.to_path):
            rmtree(self.to_path)
         if not  os.path.exists(self.work_dir):
-            cmd_args = ['git', 'clone', '--bare', self._project_git_url, self.to_path]
+            cmd_args = ['git', 'clone', self._project_git_url, self.to_path]
+            if mirror:
+                cmd_args = ['git', 'clone', '--mirror', self._project_git_url, self.to_path]
             bare_clone = subprocess.check_output(cmd_args, shell=True)
             for line in bare_clone.decode().split('\n'):
                 print(line)
@@ -42,12 +44,12 @@ class GitProject():
          if name and url:
              exists = self.get_remotes()
              if exists.get(name):
-                 cmd_args = ['cd',  self.work_dir, '&&', 'git', 'remote', 'set-url', name,  url]
+                 cmd_args = ['cd',  self.work_dir, '&&', 'git', 'remote', 'set-url',   name,  url]
                  change = subprocess.check_output(cmd_args, shell=True)
                  for line in change.decode().split('\n'):
                     print(line)
              else:
-                 cmd_args = ['cd', self.work_dir, '&&', 'git', 'remote', 'add', name, url]
+                 cmd_args = ['cd', self.work_dir, '&&', 'git',  'remote',  'add', name, url ]
                  add = subprocess.check_output(cmd_args, shell=True)
                  for line in add.decode().split('\n'):
                      print(line)
@@ -66,11 +68,22 @@ class GitProject():
             for line in pull.decode().split('\n'):
                 print(line)
 
-    def pull(self, fetch_from=None):
+    def fetch(self, fetch_from=None, prune=False):
         if fetch_from:
             work_dir = os.path.abspath(self.to_path)
             pull = subprocess.check_output(['cd', work_dir, '&&', 'git', 'fetch', fetch_from], shell=True)
+            if prune:
+                pull = subprocess.check_output(['cd', work_dir, '&&', 'git', 'fetch', '--prune', fetch_from], shell=True)
             for line in pull.decode().split('\n'):
+                print(line)
+
+    def push(self, remote=None, branch=None, mirror=False):
+        if remote:
+            cmd_args = ['cd', self.work_dir, '&&', 'git', 'push', remote, branch]
+            if mirror:
+                cmd_args = ['cd', self.work_dir, '&&', 'git', 'push', '--mirror',  remote]
+            push = subprocess.check_output(cmd_args, shell=True)
+            for line in push.decode().split('\n'):
                 print(line)
 
     def get_all_branches(self):
